@@ -6,9 +6,7 @@
 
 ## What it does
 
-In Burning Crusade, the best mana/healing potions are gated by instance — Cenarion Mana Salve only works inside Coilfang, Bottled Nethergon Energy only works inside Tempest Keep — and you don't want to waste them on trash pulls outside. SmartPotion writes (and rewrites) two macros for you whenever you change zones, so pressing the same button always uses the highest-priority potion you actually have in your bags for the zone you're in.
-
-Outside SSC/TK the raid-locked potions are dropped from the macro entirely; inside, they're inserted at the top of the priority list. Zero-count items are also pruned so `#showtooltip` lands on the right icon.
+Cenarion Mana Salve only works inside Coilfang, Bottled Nethergon Energy only works inside Tempest Keep and you don't want to have a bunch of macros to manage your potions. SmartPotion writes (and rewrites) two macros for you whenever you change zones, so pressing the same button always uses the highest-priority potion you actually have in your bags for the zone you're in.
 
 ---
 
@@ -66,20 +64,6 @@ Inside the options:
 - **Up / Down** — reorder priority
 - **Remove** — drop a potion from the list
 - Click **`[any]` / `[SSC]` / `[TK]`** to cycle the zone restriction on a row
-
----
-
-## How zone matching works
-
-When you change zone, SmartPotion checks `GetRealZoneText()` against its zone tables. If the zone is in the Tempest Keep or Coilfang complex, the matching zone-restricted potions get included in the macro body. Otherwise they're dropped — they'd just error if used outside.
-
-The macro body is rebuilt out-of-combat only (`InCombatLockdown` blocks `EditMacro`). After combat ends, `PLAYER_REGEN_ENABLED` fires and any inventory or zone change that happened mid-fight gets caught up immediately.
-
----
-
-## Compatibility
-
-- **WoW Anniversary / TBC Classic** — Interface version 20505
 
 ---
 
