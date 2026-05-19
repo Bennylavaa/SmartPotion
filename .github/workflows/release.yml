@@ -1,0 +1,36 @@
+name: Release SmartPotion on changes
+on:
+  workflow_dispatch:
+permissions:
+  contents: write
+  actions: read
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Extract version from TOC file
+        id: get_version
+        run: |
+          VERSION=$(grep "## Version:" SmartPotion.toc | sed 's/## Version: //')
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "Found version: $VERSION"
+
+      - name: Create SmartPotion zip
+        run: |
+          mkdir SmartPotion
+          rsync -av --exclude='.git' --exclude='.github' --exclude='*.md' --exclude='LICENSE' --exclude='.gitattributes' --exclude='SmartPotion' . SmartPotion/
+          zip -r SmartPotion.zip SmartPotion/
+
+      - name: Create Versioned Release and Upload Asset
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.get_version.outputs.version }}
+          name: ${{ steps.get_version.outputs.version }}
+          files: SmartPotion.zip
+          make_latest: true
+          generate_release_notes: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

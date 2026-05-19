@@ -1,0 +1,5 @@
+package-as: SmartPotion
+ignore:
+  - .git
+  - .gitignore
+  - README.md
