@@ -1,7 +1,7 @@
 ## Interface: 20505
 ## Title: SmartPotion
 ## Notes: Zone-aware mana & healing potion macros (SP / SH).
-## Version: 1.0.0
+## Version: 1.0.1
 ## Category: Combat
 ## IconTexture: Interface\Icons\INV_Potion_77
 ## SavedVariables: SmartPotionDB

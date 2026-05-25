@@ -335,17 +335,19 @@ local function UpdateMacroForList(listKey, zoneChanged)
     local cfg = TAB_CONFIG[listKey]
     local zoneCode = GetZoneCode()
 
-    local lines = { "#showtooltip" }
+    local useLines = {}
     local firstIcon = nil
+    local firstName = nil
 
     -- Pass 1: in-stock potions only (or those with unknown IDs)
     for _, potion in ipairs(list) do
         if potion.enabled and ((not potion.zone) or potion.zone == zoneCode) then
             local hasStock = (not potion.id) or (GetItemCount(potion.id) or 0) > 0
             if hasStock then
-                tinsert(lines, "/use " .. potion.name)
-                if not firstIcon and potion.id then
-                    firstIcon = GetItemIcon(potion.id)
+                tinsert(useLines, "/use " .. potion.name)
+                if not firstName then
+                    firstName = potion.name
+                    if potion.id then firstIcon = GetItemIcon(potion.id) end
                 end
             end
         end
@@ -353,18 +355,22 @@ local function UpdateMacroForList(listKey, zoneChanged)
 
     -- Pass 2: if we have nothing in stock, fall back to everything (so the
     -- macro at least shows *something* and reports "you don't have that").
-    if #lines == 1 then
+    if #useLines == 0 then
         for _, potion in ipairs(list) do
             if potion.enabled and ((not potion.zone) or potion.zone == zoneCode) then
-                tinsert(lines, "/use " .. potion.name)
-                if not firstIcon and potion.id then
-                    firstIcon = GetItemIcon(potion.id)
+                tinsert(useLines, "/use " .. potion.name)
+                if not firstName then
+                    firstName = potion.name
+                    if potion.id then firstIcon = GetItemIcon(potion.id) end
                 end
             end
         end
     end
 
-    if #lines == 1 then return end
+    if #useLines == 0 then return end
+
+    local lines = { firstName and ("#showtooltip " .. firstName) or "#showtooltip" }
+    for _, l in ipairs(useLines) do tinsert(lines, l) end
 
     local body = table.concat(lines, "\n")
     local icon = firstIcon or cfg.fallbackIcon
@@ -389,6 +395,10 @@ local function UpdateMacroForList(listKey, zoneChanged)
             if zoneChanged then
                 print("|cFF00FFFFSmartPotion:|r " .. cfg.macroName .. " updated for " .. (GetRealZoneText() or "current zone") .. ".")
             end
+        end
+        if SmartPotionDB and SmartPotionDB.debug then
+            print("|cFF80FFFFSmartPotion|r [" .. cfg.macroName .. "] body:")
+            for _, l in ipairs(lines) do print("  " .. l) end
         end
     end
 end
@@ -504,8 +514,21 @@ btn:SetScript("OnLeave", function() GameTooltip:Hide() end)
 
 SLASH_SP1 = "/sp"
 SLASH_SP2 = "/smartpotion"
-SlashCmdList["SP"] = function()
-    if MainFrame:IsShown() then
+SlashCmdList["SP"] = function(msg)
+    msg = (msg or ""):lower():match("^%s*(.-)%s*$")
+    if msg == "debug" then
+        if not SmartPotionDB then return end
+        SmartPotionDB.debug = not SmartPotionDB.debug
+        print("|cFF00FFFFSmartPotion:|r debug " .. (SmartPotionDB.debug and "ON" or "OFF"))
+    elseif msg == "refresh" or msg == "update" then
+        if InCombatLockdown() then
+            print("|cFFFF0000SmartPotion:|r can't update macros in combat.")
+        else
+            lastZoneCode = false
+            UpdateMacro()
+            print("|cFF00FFFFSmartPotion:|r macros refreshed.")
+        end
+    elseif MainFrame:IsShown() then
         MainFrame:Hide()
     else
         RefreshUI(); MainFrame:Show()
