@@ -201,13 +201,28 @@ local function AddPotionRow(index, potionData, yPos)
     -- Name
     row.Name = row:CreateFontString(nil, "OVERLAY", "GameFontNormal")
     row.Name:SetPoint("LEFT", row.Check, "RIGHT", 5, 0)
-    row.Name:SetWidth(180); row.Name:SetJustifyH("LEFT")
+    row.Name:SetWidth(130); row.Name:SetJustifyH("LEFT")
     row.Name:SetText(potionData.name)
+
+    -- Stock column: bag count / bank count
+    row.Stock = row:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+    row.Stock:SetPoint("LEFT", row.Name, "RIGHT", 5, 0)
+    row.Stock:SetWidth(50); row.Stock:SetJustifyH("CENTER")
+    local function fmtCount(n) return (n > 999) and "999+" or tostring(n) end
+    local total     = (potionData.id and GetItemCount(potionData.id, true)) or 0
+    local bagCount  = (potionData.id and GetItemCount(potionData.id))       or 0
+    local bankCount = math.max(0, total - bagCount)
+    local bagColor  = (bagCount == 0) and "|cFFFF3333" or "|cFFFFFFFF"
+    local stockText = bagColor .. fmtCount(bagCount) .. "|r"
+    if bankCount > 0 then
+        stockText = stockText .. "|cFF888888 / |r|cFFFFD700" .. fmtCount(bankCount) .. "|r"
+    end
+    row.Stock:SetText(stockText)
 
     -- Zone tag (clickable to cycle: any -> SSC -> TK -> any)
     row.Zone = CreateFrame("Button", nil, row)
     row.Zone:SetSize(60, 22)
-    row.Zone:SetPoint("LEFT", row.Name, "RIGHT", 5, 0)
+    row.Zone:SetPoint("LEFT", row.Stock, "RIGHT", 5, 0)
     row.Zone.Text = row.Zone:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
     row.Zone.Text:SetAllPoints()
     row.Zone.Text:SetText(ZoneColor(potionData.zone) .. "[" .. ZoneLabel(potionData.zone) .. "]|r")
@@ -550,8 +565,8 @@ local function ScheduleBagRefresh()
     C_Timer.After(0.5, function()
         bagUpdatePending = false
         if not InCombatLockdown() then
-            local changed = ResolveItemIds()
-            if changed and MainFrame:IsShown() then RefreshUI() end
+            ResolveItemIds()
+            if MainFrame:IsShown() then RefreshUI() end
             UpdateMacro()
         end
     end)

@@ -51,34 +51,47 @@ end
 local function makeLabel(name, frame, point, relPoint, x, y)
     local label = _G[name]
     if not label then
-        label = frame:CreateFontString(name, "OVERLAY", "GameFontNormalSmall")
-        label:SetFont("Fonts\\FRIZQT__.TTF", 12, "OUTLINE")
-        label:SetPoint(point, frame, relPoint, x, y)
+        label = UIParent:CreateFontString(name, "OVERLAY", "GameFontNormalSmall")
+        label:SetFont("Fonts\\FRIZQT__.TTF", 12, "THICKOUTLINE")
     end
+    label:ClearAllPoints()
+    label:SetPoint(point, frame, relPoint, x, y)
     return label
 end
 
 local function UpdatePlayerLabel()
     if UnitName("player") ~= OWNER then return end
-    local frame = _G["ElvUF_PartyGroup1UnitButton1"] or _G["ElvUF_Player"] or _G["PlayerFrame"]
+    local frame = _G["ElvUF_PartyGroup1UnitButton1"]
+    if not (frame and frame:IsVisible()) then frame = _G["ElvUF_Player"] end
+    if not (frame and frame:IsVisible()) then frame = _G["PlayerFrame"] end
     if not frame then return end
-    local label = makeLabel("SPVersionLabelPlayer", frame, "TOPRIGHT", "TOPRIGHT", 0, 15)
-    label:SetText("v" .. formatVersion(localVerNum))
-    label:SetTextColor(0.4, 1, 1)
+    local label = makeLabel("SPVersionLabelPlayer", frame, "TOPRIGHT", "TOPRIGHT", 0, 28)
+    label:SetText("|cFFCC66FFSP|r |cFFFFFFFFv" .. formatVersion(localVerNum) .. "|r")
+    label:SetTextColor(1, 1, 1)
     label:Show()
+end
+
+local MAX_PARTY_SLOTS = 4
+
+local function HideAllPartyLabels()
+    for i = 1, MAX_PARTY_SLOTS do
+        local label = _G["SPVersionLabel" .. i]
+        if label then label:Hide() end
+    end
 end
 
 local function UpdatePartyLabels()
     if UnitName("player") ~= OWNER then return end
+    HideAllPartyLabels()
     for i = 1, GetNumGroupMembers() - 1 do
         local memberName = UnitName("party" .. i)
         local ver = memberName and (partyVersions[memberName] or partyVersions[stripRealm(memberName)])
         if ver then
             local frame = _G["ElvUF_PartyGroup1UnitButton" .. (i + 1)] or _G["PartyMemberFrame" .. i]
             if frame then
-                local label = makeLabel("SPVersionLabel" .. i, frame, "TOPRIGHT", "TOPRIGHT", 0, 15)
-                label:SetText("v" .. formatVersion(ver))
-                label:SetTextColor(0.4, 1, 1)
+                local label = makeLabel("SPVersionLabel" .. i, frame, "TOPRIGHT", "TOPRIGHT", 0, 28)
+                label:SetText("|cFFCC66FFSP|r |cFFFFFFFFv" .. formatVersion(ver) .. "|r")
+                label:SetTextColor(1, 1, 1)
                 label:Show()
             end
         end
@@ -98,9 +111,9 @@ local function UpdateTargetLabel()
     if ver then
         local frame = _G["ElvUF_Target"] or _G["TargetFrame"]
         if not frame then return end
-        local label = makeLabel("SPVersionLabelTarget", frame, "TOPLEFT", "TOPLEFT", 0, 15)
-        label:SetText("v" .. formatVersion(ver))
-        label:SetTextColor(0.4, 1, 1)
+        local label = makeLabel("SPVersionLabelTarget", frame, "TOPLEFT", "TOPLEFT", 0, 28)
+        label:SetText("|cFFCC66FFSP|r |cFFFFFFFFv" .. formatVersion(ver) .. "|r")
+        label:SetTextColor(1, 1, 1)
         label:Show()
     else
         local label = _G["SPVersionLabelTarget"]
@@ -127,6 +140,25 @@ local function BroadcastVersion()
 end
 
 -- ─────────────────────────────────────────────────────────────────────────────
+-- Debounced refresh / rebroadcast for GROUP_ROSTER_UPDATE spam
+-- ─────────────────────────────────────────────────────────────────────────────
+
+local rosterRefreshTimer, rosterBroadcastTimer
+
+local function DebouncedRefresh()
+    if rosterRefreshTimer then rosterRefreshTimer:Cancel() end
+    rosterRefreshTimer = C_Timer.NewTimer(0.5, function()
+        UpdatePlayerLabel()
+        UpdatePartyLabels()
+    end)
+end
+
+local function DebouncedBroadcast()
+    if rosterBroadcastTimer then rosterBroadcastTimer:Cancel() end
+    rosterBroadcastTimer = C_Timer.NewTimer(2, BroadcastVersion)
+end
+
+-- ─────────────────────────────────────────────────────────────────────────────
 -- Exposed for SmartPotion.lua slash handler
 -- ─────────────────────────────────────────────────────────────────────────────
 
@@ -146,6 +178,7 @@ updater:RegisterEvent("ADDON_LOADED")
 updater:RegisterEvent("CHAT_MSG_ADDON")
 updater:RegisterEvent("PLAYER_ENTERING_WORLD")
 updater:RegisterEvent("GROUP_JOINED")
+updater:RegisterEvent("GROUP_ROSTER_UPDATE")
 updater:RegisterEvent("PLAYER_TARGET_CHANGED")
 
 updater:SetScript("OnEvent", function(_, event, ...)
@@ -167,6 +200,10 @@ updater:SetScript("OnEvent", function(_, event, ...)
     elseif event == "GROUP_JOINED" then
         BroadcastVersion()
         UpdatePartyLabels()
+
+    elseif event == "GROUP_ROSTER_UPDATE" then
+        DebouncedBroadcast()
+        DebouncedRefresh()
 
     elseif event == "PLAYER_TARGET_CHANGED" then
         if UnitName("player") == OWNER then
